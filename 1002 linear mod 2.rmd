@@ -1,0 +1,110 @@
+import itertools
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from plotly.offline import init_notebook_mode
+from sklearn import linear_model
+from sklearn import metrics
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from tqdm import notebook
+
+init_notebook_mode(connected=True)
+plt.style.use('ggplot')
+init_notebook_mode(connected=True)
+# This step mean import dataframe
+data = pd.read_csv('boston.csv')
+# Those steps divide independent variables and dependent variable
+X = data.drop(['MEDV'], axis=1)
+Y = data['MEDV']
+
+
+def fit_linear_reg(A, B):
+    # Fit linear regression model and return RSS and R squared values
+    model_k = linear_model.LinearRegression(fit_intercept=True)
+    model_k.fit(A, B)
+    RSS = mean_squared_error(B, model_k.predict(A)) * len(B)
+    R_squared = model_k.score(A, B)
+    return RSS, R_squared
+
+
+k = 14
+m = len(Y)
+RSS_list, R_squared_list, feature_list = [], [], []
+numb_features = []
+for k in notebook.tnrange(1, len(X.columns) + 1, desc='Loop...'):
+
+    for combo in itertools.combinations(X.columns, k):
+        tmp_result = fit_linear_reg(X[list(combo)], Y)  # Store temp result
+        RSS_list.append(tmp_result[0])  # Append lists
+        R_squared_list.append(tmp_result[1])
+        feature_list.append(combo)
+        numb_features.append(len(combo))
+df = pd.DataFrame(
+    {'numb_features': numb_features, 'RSS': RSS_list, 'R_squared': R_squared_list, 'features': feature_list})
+
+df['R_squared_adj'] = 1 - ((1 - df['R_squared']) * (m - 1) / (m - df['numb_features'] - 1))
+df_max = df[df.groupby('numb_features')['R_squared_adj'].transform(max) == df['R_squared_adj']]
+# df_max.to_csv("output.csv")
+
+X1 = data.drop(['MEDV'], axis=1)
+X2 = X1.drop(['INDUS'], axis=1)
+X3 = X2.drop(['AGE'], axis=1)
+y = data['MEDV']
+
+# This step divide the test groups and train groups
+X_train, X_test, y_train, y_test = train_test_split(X3, y, test_size=0.2, random_state=42)
+
+# Those steps shows how we start linear regression
+lm = LinearRegression()
+lm.fit(X_train, y_train)
+
+# Those steps shows how we check the intercept and coefficients of linear regression
+print('Intercept:', lm.intercept_)
+coe = pd.DataFrame([X_train.columns, lm.coef_]).T
+coe = coe.rename(columns={0: 'Attribute', 1: 'Coefficients'})
+print('Coefficients:', coe)
+
+# This step shows how we check the quality of prediction by several index
+y_pred = lm.predict(X_train)
+print('R^2:', metrics.r2_score(y_train, y_pred))
+print('Adjusted R^2:',
+      1 - (1 - metrics.r2_score(y_train, y_pred)) * (len(y_train) - 1) / (len(y_train) - X_train.shape[1] - 1))
+print('MAE:', metrics.mean_absolute_error(y_train, y_pred))
+print('MSE:', metrics.mean_squared_error(y_train, y_pred))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_train, y_pred)))
+
+# Those steps shows how we show the comparison between the output of our model and the test set
+plt.scatter(y_train, y_pred)
+plt.xlabel("Prices")
+plt.ylabel("Predicted prices")
+plt.title("Prices vs Predicted prices")
+plt.show()
+
+# Those steps shows how we check the assumptions of linear regression -- Linearity
+plt.scatter(y_pred, y_train - y_pred)
+plt.title("Predicted vs residuals")
+plt.xlabel("Predicted")
+plt.ylabel("Residuals")
+plt.show()
+
+# Those steps shows how we check the assumptions of linear regression -- Normally distributed
+sns.displot(y_train - y_pred)
+plt.title("Histogram of Residuals")
+plt.xlabel("Residuals")
+plt.ylabel("Frequency")
+plt.show()
+
+# Those steps show how I do the fitting graph
+# Because our test_size=0.2 ,so the number of data is 102(0.2 of 507)
+plt.scatter(y=y_test, x=np.arange(102), color='r', zorder=1)
+plt.plot(np.arange(102), y_test, color='r', label='True value')
+plt.scatter(y=y_pred[:102], x=np.arange(102), color='b', zorder=2)
+plt.plot(np.arange(102), y_pred[:102], color='b', label='Pred value')
+plt.legend()
+plt.title("Comparison chart of predicted value and true value")
+plt.xlabel("Numbers of value")
+plt.ylabel("MEDV value")
+plt.show()
