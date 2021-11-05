@@ -1,0 +1,86 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from plotly.offline import init_notebook_mode
+from sklearn import metrics
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+init_notebook_mode(connected=True)
+
+# This step mean import dataframe
+data = pd.read_csv('boston.csv')
+
+# This step mean check the null and na values in dataframe
+data.isnull().sum()
+
+# This step give a general view of dataframe
+data.describe()
+
+# This step find and show correlation between variables
+corr = data.corr()
+
+# Those steps show correlation in graph
+plt.figure(figsize=(20, 20))
+sns.heatmap(corr, cbar=True, square=True, fmt='.1f', annot=True, annot_kws={'size': 15}, cmap='Greens')
+plt.show()
+
+# Those steps divide independent variables and dependent variable
+X = data.drop(['MEDV'], axis=1)
+y = data['MEDV']
+
+# This step divide the test groups and train groups
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Those steps shows how we start linear regression
+lm = LinearRegression()
+lm.fit(X_train, y_train)
+
+# Those steps shows how we check the intercept and coefficients of linear regression
+print('Intercept:', lm.intercept_)
+coe = pd.DataFrame([X_train.columns, lm.coef_]).T
+coe = coe.rename(columns={0: 'Attribute', 1: 'Coefficients'})
+print('Coefficients:', coe)
+
+# This step shows how we check the quality of prediction by several index
+y_pred = lm.predict(X_train)
+print('R^2:', metrics.r2_score(y_train, y_pred))
+print('Adjusted R^2:',
+      1 - (1 - metrics.r2_score(y_train, y_pred)) * (len(y_train) - 1) / (len(y_train) - X_train.shape[1] - 1))
+print('MAE:', metrics.mean_absolute_error(y_train, y_pred))
+print('MSE:', metrics.mean_squared_error(y_train, y_pred))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_train, y_pred)))
+
+# Those steps shows how we show the comparison between the output of our model and the test set
+plt.scatter(y_train, y_pred)
+plt.xlabel("Prices")
+plt.ylabel("Predicted prices")
+plt.title("Prices vs Predicted prices")
+plt.show()
+
+# Those steps shows how we check the assumptions of linear regression -- Linearity
+plt.scatter(y_pred, y_train - y_pred)
+plt.title("Predicted vs residuals")
+plt.xlabel("Predicted")
+plt.ylabel("Residuals")
+plt.show()
+
+# Those steps shows how we check the assumptions of linear regression -- Normally distributed
+sns.displot(y_train - y_pred)
+plt.title("Histogram of Residuals")
+plt.xlabel("Residuals")
+plt.ylabel("Frequency")
+plt.show()
+
+# Those steps show how I do the fitting graph
+# Because our test_size=0.2 ,so the number of data is 102(0.2 of 507)
+plt.scatter(y=y_test, x=np.arange(102), color='r', zorder=1)
+plt.plot(np.arange(102), y_test, color='r', label='True value')
+plt.scatter(y=y_pred[:102], x=np.arange(102), color='b', zorder=2)
+plt.plot(np.arange(102), y_pred[:102], color='b', label='Pred value')
+plt.legend()
+plt.title("Comparison chart of predicted value and true value")
+plt.xlabel("Numbers of value")
+plt.ylabel("MEDV value")
+plt.show()
